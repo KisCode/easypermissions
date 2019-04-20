@@ -1,4 +1,4 @@
-# EasyPermissions [![Build Status][1]][2] [![Android Weekly][3]][4]
+# EasyPermissions [![Build Status][1]][2] [![Code Coverage][3]][4] [![Android Weekly][5]][6]
 
 EasyPermissions is a wrapper library to simplify basic system permissions logic when targeting
 Android M or higher.
@@ -9,7 +9,11 @@ EasyPermissions is installed by adding the following dependency to your `build.g
 
 ```groovy
 dependencies {
-    compile 'pub.devrel:easypermissions:1.0.1'
+    // For developers using AndroidX in their applications
+    implementation 'pub.devrel:easypermissions:3.0.0'
+ 
+    // For developers using the Android Support Library
+    implementation 'pub.devrel:easypermissions:2.0.1'
 }
 ```
 
@@ -50,8 +54,8 @@ The example below shows how to request permissions for a method that requires bo
     necessary. The request code provided should be unique to this request, and the method
     can take any number of permissions as its final argument.
   * Use of the `AfterPermissionGranted` annotation. This is optional, but provided for
-    convenience. If all of the permissions in a given request are granted, any methods
-    annotated with the proper request code will be executed. This is to simplify the common
+    convenience. If all of the permissions in a given request are granted, *all* methods
+    annotated with the proper request code will be executed(be sure to have an unique request code). The annotated method needs to be *void* and *without input parameters* (instead, you can use *onSaveInstanceState* in order to keep the state of your suppressed parameters). This is to simplify the common
     flow of needing to run the requesting method after all of its permissions have been granted.
     This can also be achieved by adding logic on the `onPermissionsGranted` callback.
 
@@ -68,6 +72,18 @@ private void methodRequiresTwoPermission() {
                 RC_CAMERA_AND_LOCATION, perms);
     }
 }
+```
+
+Or for finer control over the rationale dialog, use a `PermissionRequest`:
+
+```java
+EasyPermissions.requestPermissions(
+        new PermissionRequest.Builder(this, RC_CAMERA_AND_LOCATION, perms)
+                .setRationale(R.string.camera_and_location_rationale)
+                .setPositiveButtonText(R.string.rationale_ask_ok)
+                .setNegativeButtonText(R.string.rationale_ask_cancel)
+                .setTheme(R.style.my_fancy_style)
+                .build());
 ```
 
 Optionally, for a finer control, you can have your `Activity` / `Fragment` implement
@@ -112,6 +128,12 @@ these permissions from the user and they must be changed in app settings. You ca
 method `EasyPermissions.somePermissionPermanentlyDenied(...)` to display a dialog to the
 user in this situation and direct them to the system setting screen for your app:
 
+**Note**: Due to a limitation in the information provided by the Android
+framework permissions API, the `somePermissionPermanentlyDenied` method only
+works after the permission has been denied and your app has received
+the `onPermissionsDenied` callback. Otherwise the library cannot distinguish
+permanent denial from the "not yet denied" case.
+
 ```java
 @Override
 public void onPermissionsDenied(int requestCode, List<String> perms) {
@@ -136,6 +158,26 @@ public void onActivityResult(int requestCode, int resultCode, Intent data) {
 }
 ```
 
+### Interacting with the rationale dialog
+
+Implement the `EasyPermissions.RationaleCallbacks` if you want to interact with the rationale dialog.
+
+```java
+@Override
+public void onRationaleAccepted(int requestCode) {
+    // Rationale accpets to request some permissions
+    // ...
+}
+
+@Override
+public void onRationaleDenied(int requestCode) {
+    // Rationale denied to request some permissions
+    // ...
+}
+```
+
+Rationale callbacks don't necessarily imply permission changes. To check for those, see the `EasyPermissions.PermissionCallbacks`.
+
 ## LICENSE
 
 ```
@@ -157,5 +199,7 @@ public void onActivityResult(int requestCode, int resultCode, Intent data) {
 
 [1]: https://travis-ci.org/googlesamples/easypermissions.svg?branch=master
 [2]: https://travis-ci.org/googlesamples/easypermissions
-[3]: https://img.shields.io/badge/Android%20Weekly-%23185-2CB3E5.svg?style=flat
-[4]: http://androidweekly.net/issues/issue-185
+[3]: https://codecov.io/gh/googlesamples/easypermissions/branch/master/graph/badge.svg
+[4]: https://codecov.io/gh/googlesamples/easypermissions
+[5]: https://img.shields.io/badge/Android%20Weekly-%23185-2CB3E5.svg?style=flat
+[6]: http://androidweekly.net/issues/issue-185

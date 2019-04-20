@@ -20,11 +20,11 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.support.annotation.NonNull;
-import android.support.annotation.StringRes;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
+import androidx.annotation.NonNull;
+import androidx.annotation.Size;
+import androidx.core.app.ActivityCompat;
+import androidx.fragment.app.Fragment;
+import androidx.core.content.ContextCompat;
 import android.util.Log;
 
 import java.lang.reflect.InvocationTargetException;
@@ -45,10 +45,18 @@ public class EasyPermissions {
      */
     public interface PermissionCallbacks extends ActivityCompat.OnRequestPermissionsResultCallback {
 
-        void onPermissionsGranted(int requestCode, List<String> perms);
+        void onPermissionsGranted(int requestCode, @NonNull List<String> perms);
 
-        void onPermissionsDenied(int requestCode, List<String> perms);
+        void onPermissionsDenied(int requestCode, @NonNull List<String> perms);
+    }
 
+    /**
+     * Callback interface to receive button clicked events of the rationale dialog
+     */
+    public interface RationaleCallbacks {
+        void onRationaleAccepted(int requestCode);
+
+        void onRationaleDenied(int requestCode);
     }
 
     private static final String TAG = "EasyPermissions";
@@ -62,7 +70,8 @@ public class EasyPermissions {
      * yet granted.
      * @see Manifest.permission
      */
-    public static boolean hasPermissions(Context context, @NonNull String... perms) {
+    public static boolean hasPermissions(@NonNull Context context,
+                                         @Size(min = 1) @NonNull String... perms) {
         // Always return true for SDK < M, let the system deal with the permissions
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             Log.w(TAG, "hasPermissions: API version < M, returning true by default");
@@ -88,104 +97,61 @@ public class EasyPermissions {
     }
 
     /**
-     * Request permissions from an Activity with standard OK/Cancel buttons.
+     * Request a set of permissions, showing a rationale if the system requests it.
      *
-     * @see #requestPermissions(Activity, String, int, int, int, String...)
+     * @param host        requesting context.
+     * @param rationale   a message explaining why the application needs this set of permissions;
+     *                    will be displayed if the user rejects the request the first time.
+     * @param requestCode request code to track this request, must be &lt; 256.
+     * @param perms       a set of permissions to be requested.
+     * @see Manifest.permission
      */
     public static void requestPermissions(
             @NonNull Activity host, @NonNull String rationale,
-            int requestCode, @NonNull String... perms) {
-        requestPermissions(host, rationale, android.R.string.ok, android.R.string.cancel,
-                requestCode, perms);
+            int requestCode, @Size(min = 1) @NonNull String... perms) {
+        requestPermissions(
+                new PermissionRequest.Builder(host, requestCode, perms)
+                        .setRationale(rationale)
+                        .build());
     }
 
     /**
      * Request permissions from a Support Fragment with standard OK/Cancel buttons.
      *
-     * @see #requestPermissions(Activity, String, int, int, int, String...)
+     * @see #requestPermissions(Activity, String, int, String...)
      */
     public static void requestPermissions(
             @NonNull Fragment host, @NonNull String rationale,
-            int requestCode, @NonNull String... perms) {
-
-        requestPermissions(host, rationale, android.R.string.ok, android.R.string.cancel,
-                requestCode, perms);
+            int requestCode, @Size(min = 1) @NonNull String... perms) {
+        requestPermissions(
+                new PermissionRequest.Builder(host, requestCode, perms)
+                        .setRationale(rationale)
+                        .build());
     }
 
     /**
-     * Request permissions from a standard Fragment with standard OK/Cancel buttons.
+     * Request a set of permissions.
      *
-     * @see #requestPermissions(Activity, String, int, int, int, String...)
+     * @param request the permission request
+     * @see PermissionRequest
      */
-    public static void requestPermissions(
-            @NonNull android.app.Fragment host, @NonNull String rationale,
-            int requestCode, @NonNull String... perms) {
-
-        requestPermissions(host, rationale, android.R.string.ok, android.R.string.cancel,
-                requestCode, perms);
-    }
-
-    /**
-     * Request a set of permissions, showing rationale if the system requests it.
-     *
-     * @param host           requesting context.
-     * @param rationale      a message explaining why the application needs this set of permissions,
-     *                       will be displayed if the user rejects the request the first time.
-     * @param positiveButton custom text for positive button
-     * @param negativeButton custom text for negative button
-     * @param requestCode    request code to track this request, must be &lt; 256.
-     * @param perms          a set of permissions to be requested.
-     * @see Manifest.permission
-     */
-    public static void requestPermissions(
-            @NonNull Activity host, @NonNull String rationale,
-            @StringRes int positiveButton, @StringRes int negativeButton,
-            int requestCode, @NonNull String... perms) {
-        requestPermissions(PermissionHelper.newInstance(host), rationale,
-                positiveButton, negativeButton,
-                requestCode, perms);
-    }
-
-    /**
-     * Request permissions from a Support Fragment.
-     *
-     * @see #requestPermissions(Activity, String, int, int, int, String...)
-     */
-    public static void requestPermissions(
-            @NonNull Fragment host, @NonNull String rationale,
-            @StringRes int positiveButton, @StringRes int negativeButton,
-            int requestCode, @NonNull String... perms) {
-        requestPermissions(PermissionHelper.newInstance(host), rationale,
-                positiveButton, negativeButton,
-                requestCode, perms);
-    }
-
-    /**
-     * @see #requestPermissions(Activity, String, int, int, int, String...)
-     */
-    public static void requestPermissions(
-            @NonNull android.app.Fragment host, @NonNull String rationale,
-            @StringRes int positiveButton, @StringRes int negativeButton,
-            int requestCode, @NonNull String... perms) {
-        requestPermissions(PermissionHelper.newInstance(host), rationale,
-                positiveButton, negativeButton,
-                requestCode, perms);
-    }
-
-    private static void requestPermissions(
-            @NonNull PermissionHelper helper, @NonNull String rationale,
-            @StringRes int positiveButton, @StringRes int negativeButton,
-            int requestCode, @NonNull String... perms) {
+    public static void requestPermissions(PermissionRequest request) {
 
         // Check for permissions before dispatching the request
-        if (hasPermissions(helper.getContext(), perms)) {
-            notifyAlreadyHasPermissions(helper.getHost(), requestCode, perms);
+        if (hasPermissions(request.getHelper().getContext(), request.getPerms())) {
+            notifyAlreadyHasPermissions(
+                    request.getHelper().getHost(), request.getRequestCode(), request.getPerms());
             return;
         }
 
         // Request permissions
-        helper.requestPermissions(rationale, positiveButton,
-                negativeButton, requestCode, perms);
+        request.getHelper().requestPermissions(
+                request.getRationale(),
+                request.getPositiveButtonText(),
+                request.getNegativeButtonText(),
+                request.getTheme(),
+                request.getRequestCode(),
+                request.getPerms());
     }
 
     /**
@@ -246,6 +212,12 @@ public class EasyPermissions {
      * Check if at least one permission in the list of denied permissions has been permanently
      * denied (user clicked "Never ask again").
      *
+     * <b>Note</b>: Due to a limitation in the information provided by the Android
+     * framework permissions API, this method only works after the permission
+     * has been denied and your app has received the onPermissionsDenied callback.
+     * Otherwise the library cannot distinguish permanent denial from the
+     * "not yet denied" case.
+     *
      * @param host              context requesting permissions.
      * @param deniedPermissions list of denied permissions, usually from {@link
      *                          PermissionCallbacks#onPermissionsDenied(int, List)}
@@ -261,15 +233,6 @@ public class EasyPermissions {
      * @see #somePermissionPermanentlyDenied(Activity, List)
      */
     public static boolean somePermissionPermanentlyDenied(@NonNull Fragment host,
-                                                          @NonNull List<String> deniedPermissions) {
-        return PermissionHelper.newInstance(host)
-                .somePermissionPermanentlyDenied(deniedPermissions);
-    }
-
-    /**
-     * @see #somePermissionPermanentlyDenied(Activity, List).
-     */
-    public static boolean somePermissionPermanentlyDenied(@NonNull android.app.Fragment host,
                                                           @NonNull List<String> deniedPermissions) {
         return PermissionHelper.newInstance(host)
                 .somePermissionPermanentlyDenied(deniedPermissions);
@@ -296,14 +259,6 @@ public class EasyPermissions {
     }
 
     /**
-     * @see #permissionPermanentlyDenied(Activity, String).
-     */
-    public static boolean permissionPermanentlyDenied(@NonNull android.app.Fragment host,
-                                                      @NonNull String deniedPermission) {
-        return PermissionHelper.newInstance(host).permissionPermanentlyDenied(deniedPermission);
-    }
-
-    /**
      * See if some denied permission has been permanently denied.
      *
      * @param host  requesting context.
@@ -320,14 +275,6 @@ public class EasyPermissions {
      * @see #somePermissionDenied(Activity, String...)
      */
     public static boolean somePermissionDenied(@NonNull Fragment host,
-                                               @NonNull String... perms) {
-        return PermissionHelper.newInstance(host).somePermissionDenied(perms);
-    }
-
-    /**
-     * @see #somePermissionDenied(Activity, String...)
-     */
-    public static boolean somePermissionDenied(@NonNull android.app.Fragment host,
                                                @NonNull String... perms) {
         return PermissionHelper.newInstance(host).somePermissionDenied(perms);
     }

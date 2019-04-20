@@ -6,9 +6,9 @@ import android.app.FragmentManager;
 import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.StringRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StyleRes;
 
 /**
  * {@link DialogFragment} to display rationale for permission requests when the request comes from
@@ -20,18 +20,23 @@ public class RationaleDialogFragment extends DialogFragment {
     public static final String TAG = "RationaleDialogFragment";
 
     private EasyPermissions.PermissionCallbacks mPermissionCallbacks;
+    private EasyPermissions.RationaleCallbacks mRationaleCallbacks;
     private boolean mStateSaved = false;
 
     public static RationaleDialogFragment newInstance(
-            @StringRes int positiveButton, @StringRes int negativeButton,
-            @NonNull String rationaleMsg, int requestCode, @NonNull String[] permissions) {
+            @NonNull String positiveButton,
+            @NonNull String negativeButton,
+            @NonNull String rationaleMsg,
+            @StyleRes int theme,
+            int requestCode,
+            @NonNull String[] permissions) {
 
         // Create new Fragment
         RationaleDialogFragment dialogFragment = new RationaleDialogFragment();
 
         // Initialize configuration as arguments
         RationaleDialogConfig config = new RationaleDialogConfig(
-                positiveButton, negativeButton, rationaleMsg, requestCode, permissions);
+                positiveButton, negativeButton, rationaleMsg, theme, requestCode, permissions);
         dialogFragment.setArguments(config.toBundle());
 
         return dialogFragment;
@@ -40,12 +45,22 @@ public class RationaleDialogFragment extends DialogFragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1
-                && getParentFragment() != null
-                && getParentFragment() instanceof EasyPermissions.PermissionCallbacks) {
-            mPermissionCallbacks = (EasyPermissions.PermissionCallbacks) getParentFragment();
-        } else if (context instanceof EasyPermissions.PermissionCallbacks) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && getParentFragment() != null) {
+            if (getParentFragment() instanceof EasyPermissions.PermissionCallbacks) {
+                mPermissionCallbacks = (EasyPermissions.PermissionCallbacks) getParentFragment();
+            }
+            if (getParentFragment() instanceof EasyPermissions.RationaleCallbacks){
+                mRationaleCallbacks = (EasyPermissions.RationaleCallbacks) getParentFragment();
+            }
+
+        }
+
+        if (context instanceof EasyPermissions.PermissionCallbacks) {
             mPermissionCallbacks = (EasyPermissions.PermissionCallbacks) context;
+        }
+
+        if (context instanceof EasyPermissions.RationaleCallbacks) {
+            mRationaleCallbacks = (EasyPermissions.RationaleCallbacks) context;
         }
     }
 
@@ -89,7 +104,7 @@ public class RationaleDialogFragment extends DialogFragment {
         // Get config from arguments, create click listener
         RationaleDialogConfig config = new RationaleDialogConfig(getArguments());
         RationaleDialogClickListener clickListener =
-                new RationaleDialogClickListener(this, config, mPermissionCallbacks);
+                new RationaleDialogClickListener(this, config, mPermissionCallbacks, mRationaleCallbacks);
 
         // Create an AlertDialog
         return config.createFrameworkDialog(getActivity(), clickListener);

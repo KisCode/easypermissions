@@ -8,25 +8,29 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.support.annotation.RestrictTo;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
+import androidx.annotation.RestrictTo;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public class AppSettingsDialogHolderActivity extends AppCompatActivity implements DialogInterface.OnClickListener {
     private static final int APP_SETTINGS_RC = 7534;
 
     private AlertDialog mDialog;
+    private int mIntentFlags;
 
     public static Intent createShowDialogIntent(Context context, AppSettingsDialog dialog) {
-        return new Intent(context, AppSettingsDialogHolderActivity.class)
-                .putExtra(AppSettingsDialog.EXTRA_APP_SETTINGS, dialog);
+        Intent intent = new Intent(context, AppSettingsDialogHolderActivity.class);
+        intent.putExtra(AppSettingsDialog.EXTRA_APP_SETTINGS, dialog);
+        return intent;
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mDialog = AppSettingsDialog.fromIntent(getIntent(), this).showDialog(this, this);
+        AppSettingsDialog appSettingsDialog = AppSettingsDialog.fromIntent(getIntent(), this);
+        mIntentFlags = appSettingsDialog.getIntentFlags();
+        mDialog = appSettingsDialog.showDialog(this, this);
     }
 
     @Override
@@ -40,10 +44,10 @@ public class AppSettingsDialogHolderActivity extends AppCompatActivity implement
     @Override
     public void onClick(DialogInterface dialog, int which) {
         if (which == Dialog.BUTTON_POSITIVE) {
-            startActivityForResult(
-                    new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                            .setData(Uri.fromParts("package", getPackageName(), null)),
-                    APP_SETTINGS_RC);
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.fromParts("package", getPackageName(), null));
+            intent.addFlags(mIntentFlags);
+            startActivityForResult(intent, APP_SETTINGS_RC);
         } else if (which == Dialog.BUTTON_NEGATIVE) {
             setResult(Activity.RESULT_CANCELED);
             finish();

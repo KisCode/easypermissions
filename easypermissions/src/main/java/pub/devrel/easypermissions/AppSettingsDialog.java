@@ -6,14 +6,15 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.StringRes;
-import android.support.annotation.StyleRes;
-import android.support.v4.app.Fragment;
-import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StringRes;
+import androidx.annotation.StyleRes;
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.Fragment;
 
 /**
  * Dialog to prompt the user to go to the app's settings screen and enable permissions. If the user
@@ -47,6 +48,7 @@ public class AppSettingsDialog implements Parcelable {
     private final String mPositiveButtonText;
     private final String mNegativeButtonText;
     private final int mRequestCode;
+    private final int mIntentFlags;
 
     private Object mActivityOrFragment;
     private Context mContext;
@@ -58,6 +60,7 @@ public class AppSettingsDialog implements Parcelable {
         mPositiveButtonText = in.readString();
         mNegativeButtonText = in.readString();
         mRequestCode = in.readInt();
+        mIntentFlags = in.readInt();
     }
 
     private AppSettingsDialog(@NonNull final Object activityOrFragment,
@@ -66,7 +69,8 @@ public class AppSettingsDialog implements Parcelable {
                               @Nullable String title,
                               @Nullable String positiveButtonText,
                               @Nullable String negativeButtonText,
-                              int requestCode) {
+                              int requestCode,
+                              int intentFlags) {
         setActivityOrFragment(activityOrFragment);
         mThemeResId = themeResId;
         mRationale = rationale;
@@ -74,6 +78,7 @@ public class AppSettingsDialog implements Parcelable {
         mPositiveButtonText = positiveButtonText;
         mNegativeButtonText = negativeButtonText;
         mRequestCode = requestCode;
+        mIntentFlags = intentFlags;
     }
 
     static AppSettingsDialog fromIntent(Intent intent, Activity activity) {
@@ -89,8 +94,6 @@ public class AppSettingsDialog implements Parcelable {
             mContext = (Activity) activityOrFragment;
         } else if (activityOrFragment instanceof Fragment) {
             mContext = ((Fragment) activityOrFragment).getContext();
-        } else if (activityOrFragment instanceof android.app.Fragment) {
-            mContext = ((android.app.Fragment) activityOrFragment).getActivity();
         } else {
             throw new IllegalStateException("Unknown object: " + activityOrFragment);
         }
@@ -101,9 +104,6 @@ public class AppSettingsDialog implements Parcelable {
             ((Activity) mActivityOrFragment).startActivityForResult(intent, mRequestCode);
         } else if (mActivityOrFragment instanceof Fragment) {
             ((Fragment) mActivityOrFragment).startActivityForResult(intent, mRequestCode);
-        } else if (mActivityOrFragment instanceof android.app.Fragment) {
-            ((android.app.Fragment) mActivityOrFragment).startActivityForResult(intent,
-                    mRequestCode);
         }
     }
 
@@ -120,7 +120,7 @@ public class AppSettingsDialog implements Parcelable {
     AlertDialog showDialog(DialogInterface.OnClickListener positiveListener,
                            DialogInterface.OnClickListener negativeListener) {
         AlertDialog.Builder builder;
-        if (mThemeResId > 0) {
+        if (mThemeResId != -1) {
             builder = new AlertDialog.Builder(mContext, mThemeResId);
         } else {
             builder = new AlertDialog.Builder(mContext);
@@ -147,6 +147,11 @@ public class AppSettingsDialog implements Parcelable {
         dest.writeString(mPositiveButtonText);
         dest.writeString(mNegativeButtonText);
         dest.writeInt(mRequestCode);
+        dest.writeInt(mIntentFlags);
+    }
+
+    int getIntentFlags() {
+        return mIntentFlags;
     }
 
     /**
@@ -163,6 +168,7 @@ public class AppSettingsDialog implements Parcelable {
         private String mPositiveButtonText;
         private String mNegativeButtonText;
         private int mRequestCode = -1;
+        private boolean mOpenInNewTask = false;
 
         /**
          * Create a new Builder for an {@link AppSettingsDialog}.
@@ -185,18 +191,9 @@ public class AppSettingsDialog implements Parcelable {
         }
 
         /**
-         * Create a new Builder for an {@link AppSettingsDialog}.
-         *
-         * @param fragment the {@link android.app.Fragment} in which to display the dialog.
-         */
-        public Builder(@NonNull android.app.Fragment fragment) {
-            mActivityOrFragment = fragment;
-            mContext = fragment.getActivity();
-        }
-
-        /**
          * Set the dialog theme.
          */
+        @NonNull
         public Builder setThemeResId(@StyleRes int themeResId) {
             mThemeResId = themeResId;
             return this;
@@ -205,7 +202,8 @@ public class AppSettingsDialog implements Parcelable {
         /**
          * Set the title dialog. Default is "Permissions Required".
          */
-        public Builder setTitle(String title) {
+        @NonNull
+        public Builder setTitle(@Nullable String title) {
             mTitle = title;
             return this;
         }
@@ -213,6 +211,7 @@ public class AppSettingsDialog implements Parcelable {
         /**
          * Set the title dialog. Default is "Permissions Required".
          */
+        @NonNull
         public Builder setTitle(@StringRes int title) {
             mTitle = mContext.getString(title);
             return this;
@@ -223,7 +222,8 @@ public class AppSettingsDialog implements Parcelable {
          * "This app may not work correctly without the requested permissions.
          * Open the app settings screen to modify app permissions."
          */
-        public Builder setRationale(String rationale) {
+        @NonNull
+        public Builder setRationale(@Nullable String rationale) {
             mRationale = rationale;
             return this;
         }
@@ -233,6 +233,7 @@ public class AppSettingsDialog implements Parcelable {
          * "This app may not work correctly without the requested permissions.
          * Open the app settings screen to modify app permissions."
          */
+        @NonNull
         public Builder setRationale(@StringRes int rationale) {
             mRationale = mContext.getString(rationale);
             return this;
@@ -241,7 +242,8 @@ public class AppSettingsDialog implements Parcelable {
         /**
          * Set the positive button text, default is {@link android.R.string#ok}.
          */
-        public Builder setPositiveButton(String text) {
+        @NonNull
+        public Builder setPositiveButton(@Nullable String text) {
             mPositiveButtonText = text;
             return this;
         }
@@ -249,6 +251,7 @@ public class AppSettingsDialog implements Parcelable {
         /**
          * Set the positive button text, default is {@link android.R.string#ok}.
          */
+        @NonNull
         public Builder setPositiveButton(@StringRes int textId) {
             mPositiveButtonText = mContext.getString(textId);
             return this;
@@ -262,7 +265,8 @@ public class AppSettingsDialog implements Parcelable {
          * Activity#onActivityResult(int, int, Intent)}. If you still don't have the right
          * permissions, then the request was cancelled.
          */
-        public Builder setNegativeButton(String text) {
+        @NonNull
+        public Builder setNegativeButton(@Nullable String text) {
             mNegativeButtonText = text;
             return this;
         }
@@ -270,6 +274,7 @@ public class AppSettingsDialog implements Parcelable {
         /**
          * Set the negative button text, default is {@link android.R.string#cancel}.
          */
+        @NonNull
         public Builder setNegativeButton(@StringRes int textId) {
             mNegativeButtonText = mContext.getString(textId);
             return this;
@@ -280,8 +285,20 @@ public class AppSettingsDialog implements Parcelable {
          * in the calling Activity's {@link Activity#onActivityResult(int, int, Intent)} method.
          * Default is {@link #DEFAULT_SETTINGS_REQ_CODE}.
          */
+        @NonNull
         public Builder setRequestCode(int requestCode) {
             mRequestCode = requestCode;
+            return this;
+        }
+
+        /**
+         * Set whether the settings screen should be opened in a separate task. This is achieved by
+         * setting {@link android.content.Intent#FLAG_ACTIVITY_NEW_TASK#FLAG_ACTIVITY_NEW_TASK} on
+         * the Intent used to open the settings screen.
+         */
+        @NonNull
+        public Builder setOpenInNewTask(boolean openInNewTask) {
+            mOpenInNewTask = openInNewTask;
             return this;
         }
 
@@ -289,6 +306,7 @@ public class AppSettingsDialog implements Parcelable {
          * Build the {@link AppSettingsDialog} from the specified options. Generally followed by a
          * call to {@link AppSettingsDialog#show()}.
          */
+        @NonNull
         public AppSettingsDialog build() {
             mRationale = TextUtils.isEmpty(mRationale) ?
                     mContext.getString(R.string.rationale_ask_again) : mRationale;
@@ -300,6 +318,11 @@ public class AppSettingsDialog implements Parcelable {
                     mContext.getString(android.R.string.cancel) : mNegativeButtonText;
             mRequestCode = mRequestCode > 0 ? mRequestCode : DEFAULT_SETTINGS_REQ_CODE;
 
+            int intentFlags = 0;
+            if (mOpenInNewTask) {
+                intentFlags |= Intent.FLAG_ACTIVITY_NEW_TASK;
+            }
+
             return new AppSettingsDialog(
                     mActivityOrFragment,
                     mThemeResId,
@@ -307,7 +330,8 @@ public class AppSettingsDialog implements Parcelable {
                     mTitle,
                     mPositiveButtonText,
                     mNegativeButtonText,
-                    mRequestCode);
+                    mRequestCode,
+                    intentFlags);
         }
 
     }
